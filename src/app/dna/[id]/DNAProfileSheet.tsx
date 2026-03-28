@@ -12,6 +12,38 @@ interface Props {
 
 export default function DNAProfileSheet({ dnaCard, sessionId }: Props) {
   const [copied, setCopied] = useState(false);
+  const [compatLoading, setCompatLoading] = useState(false);
+  const [compatResult, setCompatResult] = useState<{
+    compatibility_summary: string;
+    collab_ideas: { title: string; hook: string; format: string; why_together: string }[];
+    combined_strengths: string[];
+  } | null>(null);
+
+  async function handleCompat() {
+    const mySessionId = localStorage.getItem("creator-session-id");
+    if (!mySessionId) {
+      // User doesn't have their own DNA card yet
+      window.location.href = "/";
+      return;
+    }
+    if (mySessionId === sessionId) return; // Can't compare with yourself
+
+    setCompatLoading(true);
+    try {
+      const res = await fetch("/api/compat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id_a: mySessionId, session_id_b: sessionId }),
+      });
+      if (!res.ok) throw new Error("failed");
+      const data = await res.json();
+      setCompatResult(data);
+    } catch {
+      // Silently fail — compat is optional
+    } finally {
+      setCompatLoading(false);
+    }
+  }
 
   async function handleShare() {
     const url = `${window.location.origin}/dna/${sessionId}`;
@@ -126,7 +158,50 @@ export default function DNAProfileSheet({ dnaCard, sessionId }: Props) {
             >
               {copied ? "링크가 복사되었어요!" : "DNA 카드 공유하기"}
             </button>
+
+            <button
+              onClick={handleCompat}
+              disabled={compatLoading}
+              className="w-full py-3.5 border border-border text-primary-text rounded-[6px] text-[14px] font-medium text-center hover:border-tertiary-text transition-colors duration-200 disabled:opacity-50"
+            >
+              {compatLoading ? "분석 중..." : "콜라보 아이디어 보기"}
+            </button>
           </motion.div>
+
+          {/* Compatibility results */}
+          {compatResult && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone mb-3">
+                COLLAB
+              </p>
+              <p className="text-[15px] text-primary-text mb-4">{compatResult.compatibility_summary}</p>
+
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {compatResult.combined_strengths.map((s, i) => (
+                  <span key={i} className="px-3 py-1 bg-surface rounded-full text-[12px] text-secondary-text">
+                    {s}
+                  </span>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                {compatResult.collab_ideas.map((idea, i) => (
+                  <div key={i} className="bg-white border border-border-subtle rounded-[10px] p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-tertiary-text mb-1">
+                      {idea.format}
+                    </p>
+                    <p className="text-[15px] font-medium text-primary-text mb-1">{idea.title}</p>
+                    <p className="text-[13px] text-secondary-text leading-[1.6] mb-2">{idea.hook}</p>
+                    <p className="text-[12px] text-tertiary-text">{idea.why_together}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
 

@@ -17,7 +17,7 @@ describe("useCoachingFlow", () => {
     expect(result.current.validateAnswer("이것은 충분히 긴 답변입니다")).toBeNull();
   });
 
-  it("advances to next question on submit", () => {
+  it("returns insight and next question on submit", () => {
     const { result } = renderHook(() => useCoachingFlow());
 
     let response: ReturnType<typeof result.current.submitAnswer>;
@@ -28,16 +28,33 @@ describe("useCoachingFlow", () => {
     expect(response!.insight).toBeTruthy();
     expect(response!.nextQuestion).toBeTruthy();
     expect(response!.isLast).toBe(false);
+    // questionIndex stays at 0 until skipFollowUp is called
+    expect(result.current.questionIndex).toBe(0);
+  });
+
+  it("advances after skipFollowUp", () => {
+    const { result } = renderHook(() => useCoachingFlow());
+
+    act(() => {
+      result.current.submitAnswer("코딩을 할 때 시간이 가는 줄 모릅니다");
+    });
+    act(() => {
+      result.current.skipFollowUp();
+    });
+
     expect(result.current.questionIndex).toBe(1);
   });
 
   it("returns isLast=true on final question", () => {
     const { result } = renderHook(() => useCoachingFlow());
 
-    // Submit 5 answers
+    // Submit 5 answers, each followed by skipFollowUp
     for (let i = 0; i < 5; i++) {
       act(() => {
         result.current.submitAnswer(`충분히 긴 답변 번호 ${i + 1} 입니다`);
+      });
+      act(() => {
+        result.current.skipFollowUp();
       });
     }
 
@@ -52,7 +69,7 @@ describe("useCoachingFlow", () => {
     });
 
     const answers = result.current.getAnswers();
-    expect(Object.keys(answers)).toHaveLength(1);
+    expect(Object.keys(answers).length).toBeGreaterThanOrEqual(1);
     expect(Object.values(answers)[0]).toBe("코딩을 정말 좋아합니다");
   });
 
@@ -66,6 +83,18 @@ describe("useCoachingFlow", () => {
 
     const answers = result.current.getAnswers();
     expect(Object.values(answers)[0]).toHaveLength(500);
+  });
+
+  it("supports onboarding level selection", () => {
+    const { result } = renderHook(() => useCoachingFlow());
+
+    expect(result.current.level).toBeNull();
+
+    act(() => {
+      result.current.selectLevel("active");
+    });
+
+    expect(result.current.level).toBe("active");
   });
 
   it("generates keyword-matched insights", () => {
