@@ -22,6 +22,7 @@
     "@vercel/og": "^0.6.8",
     "ai": "^6.0.141",
     "framer-motion": "^11.0.0",
+    "google-trends-api": "^4.9.2",
     "jsdom": "^29.0.1",
     "next": "^15.5.14",
     "react": "^19.0.0",

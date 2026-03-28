@@ -1,8 +1,10 @@
 import { useState, useRef, useCallback } from "react";
-import { QUESTIONS } from "@/lib/questions";
+import { getQuestions, QUESTIONS } from "@/lib/questions";
+import type { CreatorLevel } from "@/components/OnboardingBranch";
 
 const MIN_ANSWER_LENGTH = 10;
 const MAX_ANSWER_LENGTH = 500;
+const MAX_FOLLOWUPS_PER_QUESTION = 2;
 
 function generateInsight(answer: string, qIndex: number): string {
   const lower = answer.toLowerCase();
@@ -15,6 +17,8 @@ function generateInsight(answer: string, qIndex: number): string {
     [/게임|놀이|레고|조립/, "체계 안에서 자유롭게 탐색하는 걸 좋아하시네요."],
     [/분석|정리|체계|구조|설명/, "복잡한 것을 명확하게 정리하는 능력이 있으시네요."],
     [/음악|노래|악기/, "감성적 표현에 재능이 있으시네요."],
+    [/유튜브|인스타|틱톡|브이로그/, "콘텐츠 만드는 걸 즐기시는군요!"],
+    [/구독자|조회수|팔로워/, "성장에 대한 열정이 느껴져요."],
   ];
   for (const [regex, response] of patterns) {
     if (regex.test(lower)) return response;
@@ -27,12 +31,21 @@ function generateInsight(answer: string, qIndex: number): string {
 }
 
 export function useCoachingFlow() {
+  const [level, setLevel] = useState<CreatorLevel | null>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
+  const [followUpCount, setFollowUpCount] = useState(0);
+  const [isInFollowUp, setIsInFollowUp] = useState(false);
   const answersRef = useRef<Record<string, string>>({});
+  const followUpAnswersRef = useRef<string[]>([]);
 
-  const isComplete = questionIndex >= QUESTIONS.length;
-  const currentQuestion = isComplete ? null : QUESTIONS[questionIndex];
-  const progress = { current: questionIndex + 1, total: QUESTIONS.length };
+  const questions = level ? getQuestions(level) : QUESTIONS;
+  const isComplete = questionIndex >= questions.length;
+  const currentQuestion = isComplete ? null : questions[questionIndex];
+  const progress = { current: questionIndex + 1, total: questions.length };
+
+  const selectLevel = useCallback((selectedLevel: CreatorLevel) => {
+    setLevel(selectedLevel);
+  }, []);
 
   const validateAnswer = useCallback((text: string): string | null => {
     const trimmed = text.trim();
@@ -46,36 +59,84 @@ export function useCoachingFlow() {
     return text.trim().slice(0, MAX_ANSWER_LENGTH);
   }, []);
 
+  const canDoFollowUp = followUpCount < MAX_FOLLOWUPS_PER_QUESTION;
+
   const submitAnswer = useCallback(
     (text: string): { insight: string; nextQuestion: string | null; isLast: boolean } => {
       const sanitized = sanitizeAnswer(text);
-      const qId = QUESTIONS[questionIndex].id;
+
+      if (isInFollowUp) {
+        // Store follow-up answer under a sub-key
+        const baseKey = questions[questionIndex].id;
+        const fKey = `${baseKey}_f${followUpCount}`;
+        answersRef.current[fKey] = sanitized;
+        followUpAnswersRef.current.push(sanitized);
+        setIsInFollowUp(false);
+
+        // After follow-up, advance to next core question
+        const insight = generateInsight(sanitized, questionIndex);
+        const nextIdx = questionIndex + 1;
+        const isLast = nextIdx >= questions.length;
+        setQuestionIndex(nextIdx);
+        setFollowUpCount(0);
+
+        return {
+          insight,
+          nextQuestion: isLast ? null : questions[nextIdx].question,
+          isLast,
+        };
+      }
+
+      // Core question answer
+      const qId = questions[questionIndex].id;
       answersRef.current[qId] = sanitized;
+      followUpAnswersRef.current.push(sanitized);
 
       const insight = generateInsight(sanitized, questionIndex);
       const nextIdx = questionIndex + 1;
-      const isLast = nextIdx >= QUESTIONS.length;
+      const isLast = nextIdx >= questions.length;
 
-      setQuestionIndex(nextIdx);
-
+      // Don't advance yet — caller may trigger a follow-up
       return {
         insight,
-        nextQuestion: isLast ? null : QUESTIONS[nextIdx].question,
+        nextQuestion: isLast ? null : questions[nextIdx].question,
         isLast,
       };
     },
-    [questionIndex, sanitizeAnswer],
+    [questionIndex, questions, sanitizeAnswer, isInFollowUp, followUpCount],
   );
 
+  const startFollowUp = useCallback((followUpQuestion: string) => {
+    setFollowUpCount((c) => c + 1);
+    setIsInFollowUp(true);
+    // Don't advance questionIndex — we're still on the same core Q
+  }, []);
+
+  const skipFollowUp = useCallback(() => {
+    // Advance to next core question
+    const nextIdx = questionIndex + 1;
+    setQuestionIndex(nextIdx);
+    setFollowUpCount(0);
+    setIsInFollowUp(false);
+  }, [questionIndex]);
+
   const getAnswers = useCallback(() => answersRef.current, []);
+  const getPreviousAnswers = useCallback(() => followUpAnswersRef.current, []);
 
   return {
+    level,
+    selectLevel,
     questionIndex,
     currentQuestion,
     progress,
     isComplete,
+    isInFollowUp,
+    canDoFollowUp,
     validateAnswer,
     submitAnswer,
+    startFollowUp,
+    skipFollowUp,
     getAnswers,
+    getPreviousAnswers,
   };
 }

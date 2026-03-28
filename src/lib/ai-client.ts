@@ -6,6 +6,7 @@ import { anthropic } from "@ai-sdk/anthropic";
  * Haiku: follow-up questions, conversation (speed-sensitive) — used in PR 2
  */
 export const sonnet = anthropic("claude-sonnet-4-20250514");
+export const haiku = anthropic("claude-haiku-4-5-20251001");
 
 export const AI_CONFIG = {
   maxRetries: 3,

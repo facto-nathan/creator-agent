@@ -3,11 +3,7 @@
 import { create } from "zustand";
 
 export interface CoachingAnswers {
-  q1: string;
-  q2: string;
-  q3: string;
-  q4: string;
-  q5: string;
+  [key: string]: string;
 }
 
 export interface CreatorDNACard {
@@ -62,7 +58,7 @@ export interface CoachingState {
   ideaStage: IdeaStage;
   finalIdea: ContentIdea | null;
 
-  setAnswer: (questionId: keyof CoachingAnswers, answer: string) => void;
+  setAnswer: (questionId: string, answer: string) => void;
   nextQuestion: () => void;
   setAnalysisResult: (result: AnalysisResult) => void;
   setDNACard: (card: CreatorDNACard) => void;
@@ -71,19 +67,13 @@ export interface CoachingState {
   setContentIdeas: (ideas: ContentIdea[]) => void;
   toggleIdeaSelection: (id: string) => void;
   setVariations: (variations: ContentIdea[]) => void;
-  setDeepenedIdea: (idea: DeepenedIdea) => void;
+  setDeepenedIdea: (idea: DeepenedIdea | null) => void;
   setIdeaStage: (stage: IdeaStage) => void;
-  setFinalIdea: (idea: ContentIdea) => void;
+  setFinalIdea: (idea: ContentIdea | null) => void;
   reset: () => void;
 }
 
-const initialAnswers: CoachingAnswers = {
-  q1: "",
-  q2: "",
-  q3: "",
-  q4: "",
-  q5: "",
-};
+const initialAnswers: CoachingAnswers = {};
 
 export const useCoachingStore = create<CoachingState>((set) => ({
   answers: initialAnswers,
