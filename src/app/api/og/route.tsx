@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
                 style={{
                   fontSize: "10px",
                   fontWeight: 600,
-                  color: "#9C958E",
+                  color: "#8A837C",
                   letterSpacing: "0.14em",
                   textTransform: "uppercase",
                 }}
@@ -115,13 +115,13 @@ export async function GET(request: NextRequest) {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <div style={{ display: "flex", gap: "16px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", flex: 1 }}>
                 <div
                   style={{
                     fontSize: "10px",
                     fontWeight: 600,
-                    color: "#9C958E",
+                    color: "#8A837C",
                     letterSpacing: "0.14em",
                     textTransform: "uppercase",
                   }}
@@ -138,12 +138,12 @@ export async function GET(request: NextRequest) {
                   {niche}
                 </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", flex: 1 }}>
                 <div
                   style={{
                     fontSize: "10px",
                     fontWeight: 600,
-                    color: "#9C958E",
+                    color: "#8A837C",
                     letterSpacing: "0.14em",
                     textTransform: "uppercase",
                   }}
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
                 style={{
                   fontSize: "10px",
                   fontWeight: 600,
-                  color: "#9C958E",
+                  color: "#8A837C",
                   letterSpacing: "0.14em",
                   textTransform: "uppercase",
                 }}
