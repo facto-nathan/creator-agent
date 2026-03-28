@@ -3,6 +3,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { haiku, AI_CONFIG } from "@/lib/ai-client";
 import { WeeklyIdeaSchema } from "@/lib/schemas";
+import { getTrends } from "@/lib/trends";
 
 const WeeklyIdeasResponseSchema = z.object({
   ideas: z.array(WeeklyIdeaSchema).min(3).max(5),
@@ -48,15 +49,12 @@ export async function POST(request: Request) {
 
     const dna = session.dna_result.creator_dna;
 
-    // Fetch current trends
+    // Fetch current trends (direct import, no self-request)
     let trendSection = "";
     try {
-      const trendRes = await fetch(`${process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : "http://localhost:3000"}/api/trends`);
-      if (trendRes.ok) {
-        const trendData = await trendRes.json();
-        if (trendData.trends?.length > 0) {
-          trendSection = `\n\n현재 한국 트렌드:\n${trendData.trends.slice(0, 5).map((t: { title: string }) => `- ${t.title}`).join("\n")}\n\n5개 아이디어 중 1-2개는 트렌드와 DNA를 결합해주세요. 트렌드 결합 아이디어는 is_trend: true로 표시하세요.`;
-        }
+      const { trends } = await getTrends();
+      if (trends.length > 0) {
+        trendSection = `\n\n현재 한국 트렌드:\n${trends.slice(0, 5).map((t) => `- ${t.title}`).join("\n")}\n\n5개 아이디어 중 1-2개는 트렌드와 DNA를 결합해주세요. 트렌드 결합 아이디어는 is_trend: true로 표시하세요.`;
       }
     } catch {
       // Trends unavailable, proceed without

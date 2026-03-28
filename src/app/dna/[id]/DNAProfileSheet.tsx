@@ -334,6 +334,18 @@ export default function DNAProfileSheet({ dnaCard, sessionId }: Props) {
             </button>
 
             <button
+              onClick={() => {
+                trackEvent(sessionId, "share_click", { platform: "kakao" });
+                const url = `${window.location.origin}/dna/${sessionId}`;
+                const kakaoUrl = `https://story.kakao.com/share?url=${encodeURIComponent(url)}`;
+                window.open(kakaoUrl, "_blank", "width=600,height=400");
+              }}
+              className="w-full py-3.5 border border-border text-primary-text rounded-full text-[14px] font-medium text-center hover:border-tertiary-text transition-colors duration-200"
+            >
+              카카오톡으로 공유하기
+            </button>
+
+            <button
               onClick={handleCompat}
               disabled={compatLoading}
               className="w-full py-3.5 border border-border text-primary-text rounded-full text-[14px] font-medium text-center hover:border-tertiary-text transition-colors duration-200 disabled:opacity-50"
