@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
             justifyContent: "center",
             backgroundColor: "#F0EBE3",
             padding: "48px",
+            fontFamily: "Pretendard",
           }}
         >
           <div
@@ -205,6 +206,24 @@ export async function GET(request: NextRequest) {
       {
         width: 800,
         height: 1000,
+        fonts: [
+          {
+            name: "Pretendard",
+            data: await fetch(
+              "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/public/static/Pretendard-Medium.otf"
+            ).then((res) => res.arrayBuffer()),
+            weight: 500,
+            style: "normal",
+          },
+          {
+            name: "Pretendard",
+            data: await fetch(
+              "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/public/static/Pretendard-SemiBold.otf"
+            ).then((res) => res.arrayBuffer()),
+            weight: 600,
+            style: "normal",
+          },
+        ],
       }
     );
   } catch (error) {

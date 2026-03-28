@@ -9,6 +9,11 @@ export const AnalysisResultSchema = z.object({
   communication_style: z.string(),
 });
 
+export const ContentPillarSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+});
+
 export const CreatorDNACardSchema = z.object({
   archetype_name: z.string(),
   archetype_icon: z.string(),
@@ -18,6 +23,16 @@ export const CreatorDNACardSchema = z.object({
   recommended_platforms: z.array(z.string()).min(1).max(3),
   mood: z.string(),
   color: z.string(),
+  // Living DNA Page fields (nullable for backward compat with old sessions)
+  positioning_statement: z.string().nullable().optional(),
+  content_pillars: z.array(ContentPillarSchema).nullable().optional(),
+  why_work_with_me: z.string().nullable().optional(),
+  ideal_sponsors: z.array(z.string()).nullable().optional(),
+});
+
+export const WeeklyIdeaSchema = z.object({
+  text: z.string(),
+  is_trend: z.boolean(),
 });
 
 export const CoachingResponseSchema = z.object({
@@ -43,5 +58,7 @@ export const SessionSchema = z.object({
 
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
 export type CreatorDNACard = z.infer<typeof CreatorDNACardSchema>;
+export type ContentPillar = z.infer<typeof ContentPillarSchema>;
 export type CoachingResponse = z.infer<typeof CoachingResponseSchema>;
 export type Session = z.infer<typeof SessionSchema>;
+export type WeeklyIdea = z.infer<typeof WeeklyIdeaSchema>;
