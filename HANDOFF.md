@@ -6,6 +6,31 @@
 
 핵심 비전: "Everyone, a creator." AI 시대에 기능적 차별화는 사라지고, 자신만의 아이덴티티만 남는다. 사람들이 자기 강점을 찾고 본인만의 채널로 성장할 수 있게.
 
+## Next Vision: Creator Workspace (2026-03-28)
+
+**사용자 방향:** "모든 크리에이터의 시작점과 끝점이 될 수 있는 워크스페이스가 되어야 합니다."
+
+이전 세션에서 "해커톤 → 서비스" 진화를 완료했고, 다음 단계는 "서비스 → 플랫폼"입니다. 단순한 DNA 발견 도구가 아니라 크리에이터의 전체 여정을 지원하는 워크스페이스. CEO Review에서 SCOPE EXPANSION 모드로 이 비전을 탐색해야 합니다.
+
+**핵심 질문:**
+- "시작점": 강점 발견 + DNA Card + 아이디어 (현재 완료)
+- "끝점": 콘텐츠 기획 → 제작 → 퍼블리싱 → 성장 분석까지?
+- 어디까지가 이 제품의 범위이고, 어디서 다른 도구와 연결하는가?
+
+**현재 상태 요약:**
+- 적응형 코칭 (5개 핵심 Q + AI 후속 질문)
+- 온보딩 분기 (초보/활동 중)
+- DNA Card 생성 + 공유 (/dna/[id])
+- Creator Compatibility (콜라보 아이디어)
+- 트렌드 API (YouTube Korea + 큐레이션 폴백)
+- Supabase 세션 저장 (Tied-dev)
+- Rate limiting + Analytics
+- 23 테스트, 빌드 통과, QA 완료
+
+**남은 TODO (HANDOFF 하단 참조):** Auth, Trend UI 연결, 애니메이션, OG 폰트, E2E 테스트, Sentry, Comparison Workspace
+
+---
+
 ## Evolution: Hackathon → Platform (2026-03-28)
 
 해커톤 MVP에서 실제 서비스 기반으로 진화. CEO Review → Design Review → Eng Review → 구현 → QA 완료.
