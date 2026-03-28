@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCoaching } from "@/store/CoachingContext";
-import { QUESTIONS } from "@/lib/questions";
+import { getQuestions } from "@/lib/questions";
 import { useCoachingFlow } from "@/hooks/useCoachingFlow";
 import { useMessageQueue } from "@/hooks/useMessageQueue";
 import ChatBubble from "./ChatBubble";
 import ChatInput from "./ChatInput";
 import CompactDNACard from "./CompactDNACard";
+import OnboardingBranch, { type CreatorLevel } from "./OnboardingBranch";
 import IdeaCard from "./IdeaCard";
 import DeepenView from "./DeepenView";
 import type { ContentIdea, DeepenedIdea, CreatorDNACard, AnalysisResult } from "@/store/useCoachingStore";
@@ -20,7 +21,7 @@ interface Message {
   type?: "text" | "dna-card" | "ideas-ready" | "deepen-ready";
 }
 
-type Phase = "greeting" | "coaching" | "analyzing" | "result" | "ideas" | "varying" | "deepening";
+type Phase = "greeting" | "onboarding" | "coaching" | "followup" | "analyzing" | "result" | "ideas" | "varying" | "deepening";
 
 function parseIdeaAction(text: string): {
   action: "vary" | "deepen" | "none";
@@ -43,7 +44,9 @@ function parseIdeaAction(text: string): {
 // Stage labels for the chrome bar
 const STAGE_LABELS: Record<Phase, string> = {
   greeting: "Creator DNA",
+  onboarding: "Creator DNA",
   coaching: "Coaching",
+  followup: "Coaching",
   analyzing: "Analyzing",
   result: "DNA Card",
   ideas: "Ideas",
@@ -70,6 +73,7 @@ export default function ChatView() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const greetedRef = useRef(false);
+  const sessionIdRef = useRef<string | null>(null);
 
   const coaching = useCoachingFlow();
 
@@ -96,17 +100,27 @@ export default function ChatView() {
     setIsTyping,
   );
 
-  // Greeting
+  // Greeting → show onboarding branch
   useEffect(() => {
     if (phase !== "greeting" || greetedRef.current) return;
     greetedRef.current = true;
-    queue.enqueueAll([
-      { content: "안녕하세요! 당신만의 크리에이터 DNA를 찾아볼까요?", delay: 800 },
-      { content: QUESTIONS[0].question, delay: 800 },
-    ]);
-    setPhase("coaching");
+    queue.enqueue("안녕하세요! 당신만의 크리에이터 DNA를 찾아볼까요?", 800);
+    setPhase("onboarding");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function handleOnboardingSelect(level: CreatorLevel) {
+    coaching.selectLevel(level);
+    const questions = getQuestions(level);
+    addMsg(level === "beginner" ? "아직 시작 전이에요" : "이미 활동 중이에요", "user");
+    queue.enqueueAll([
+      { content: level === "beginner"
+        ? "좋아요! 숨겨진 강점을 함께 찾아볼게요."
+        : "멋져요! 더 성장할 수 있는 방향을 함께 찾아볼게요.", delay: 600 },
+      { content: questions[0].question, delay: 800 },
+    ]);
+    setPhase("coaching");
+  }
 
   async function generateIdeas() {
     if (!coachingResult) return;
@@ -220,24 +234,21 @@ export default function ChatView() {
   const handleSend = async (text: string) => {
     addMsg(text, "user");
 
-    // Coaching phase
-    if (phase === "coaching") {
+    // Coaching phase (core questions + follow-ups)
+    if (phase === "coaching" || phase === "followup") {
       const validationError = coaching.validateAnswer(text);
       if (validationError) {
         queue.enqueue(validationError, 400);
         return;
       }
 
+      const questions = coaching.level ? getQuestions(coaching.level) : getQuestions("beginner");
       const { insight, nextQuestion, isLast } = coaching.submitAnswer(text);
-      const qId = QUESTIONS[coaching.questionIndex].id;
-      setAnswer(qId, text);
+      const qId = questions[coaching.questionIndex]?.id;
+      if (qId) setAnswer(qId, text);
 
-      if (!isLast && nextQuestion) {
-        queue.enqueueAll([
-          { content: insight, delay: 800 },
-          { content: nextQuestion, delay: 800 },
-        ]);
-      } else {
+      if (isLast) {
+        // All questions answered — run analysis
         queue.enqueue("좋은 이야기 감사합니다. 분석을 시작할게요...", 800);
         setPhase("analyzing");
         setLoading(true);
@@ -252,6 +263,26 @@ export default function ChatView() {
           setAnalysisResult(data.analysis);
           setDNACard(data.creator_dna);
           setCoachingResult(data);
+
+          // Save session to Supabase
+          try {
+            const sessionRes = await fetch("/api/session", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                coaching_answers: coaching.getAnswers(),
+                dna_result: data,
+              }),
+            });
+            if (sessionRes.ok) {
+              const { id } = await sessionRes.json();
+              sessionIdRef.current = id;
+              localStorage.setItem("creator-session-id", id);
+            }
+          } catch {
+            // Session save failure is non-blocking
+          }
+
           queue.enqueueAll([
             { content: "분석이 완료됐어요!", delay: 1500 },
             { content: "", delay: 600, type: "dna-card" },
@@ -263,6 +294,51 @@ export default function ChatView() {
           setRetryAvailable(true);
         } finally {
           setLoading(false);
+        }
+        return;
+      }
+
+      // Not the last question — check if follow-up is needed
+      if (phase === "followup" || !coaching.canDoFollowUp) {
+        // After a follow-up answer or max follow-ups reached, go to next Q
+        coaching.skipFollowUp();
+        queue.enqueueAll([
+          { content: insight, delay: 800 },
+          { content: nextQuestion!, delay: 800 },
+        ]);
+        setPhase("coaching");
+      } else {
+        // Try to get a follow-up question from Haiku
+        queue.enqueue(insight, 800);
+        try {
+          const coreQ = questions[coaching.questionIndex]?.question || "";
+          const followRes = await fetch("/api/followup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              core_question: coreQ,
+              answer: text,
+              previous_answers: coaching.getPreviousAnswers(),
+            }),
+          });
+          const followData = await followRes.json();
+          if (followData.needsFollowUp && followData.question) {
+            coaching.startFollowUp(followData.question);
+            queue.enqueue(followData.question, 800);
+            setPhase("followup");
+          } else {
+            // Answer was deep enough, advance
+            coaching.skipFollowUp();
+            if (nextQuestion) {
+              queue.enqueue(nextQuestion, 800);
+            }
+          }
+        } catch {
+          // Follow-up failed, just advance
+          coaching.skipFollowUp();
+          if (nextQuestion) {
+            queue.enqueue(nextQuestion, 800);
+          }
         }
       }
       return;
@@ -328,7 +404,7 @@ export default function ChatView() {
             )}
             {phase === "coaching" && (
               <div className="flex items-center gap-1.5">
-                {QUESTIONS.map((_, i) => (
+                {Array.from({ length: coaching.progress.total }, (_, i) => (
                   <div key={i} className={`w-[5px] h-[5px] rounded-full transition-colors ${i < coaching.questionIndex ? "bg-stone" : i === coaching.questionIndex ? "bg-primary-text" : "bg-border"}`} />
                 ))}
               </div>
@@ -354,8 +430,9 @@ export default function ChatView() {
                         <CompactDNACard
                           dnaCard={coachingResult.creator_dna}
                           onViewFull={() => {
-                            // In PR 2: navigate to /dna/[sessionId]
-                            // For now: scroll to show full card info
+                            if (sessionIdRef.current) {
+                              window.open(`/dna/${sessionIdRef.current}`, "_blank");
+                            }
                           }}
                         />
                       </motion.div>
@@ -364,6 +441,11 @@ export default function ChatView() {
                   return <ChatBubble key={msg.id} role={msg.role}>{msg.content}</ChatBubble>;
                 })}
               </AnimatePresence>
+
+              {/* Onboarding branch selection */}
+              {phase === "onboarding" && !isTyping && (
+                <OnboardingBranch onSelect={handleOnboardingSelect} />
+              )}
 
               {/* Retry button for analysis failure */}
               {retryAvailable && (
@@ -379,12 +461,18 @@ export default function ChatView() {
 
               {/* Generate ideas button (user chooses, not auto-fire) */}
               {phase === "result" && coachingResult && !contentIdeas && !retryAvailable && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="flex justify-center py-2">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="flex flex-col items-center gap-2 py-2">
                   <button
                     onClick={generateIdeas}
                     className="px-6 py-2.5 bg-primary-text text-accent-inverse rounded-full text-[13px] font-medium hover:bg-[#2C2620] transition-colors"
                   >
                     콘텐츠 아이디어 보기
+                  </button>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="text-[12px] text-tertiary-text underline underline-offset-3 decoration-border"
+                  >
+                    다시 코칭받기
                   </button>
                 </motion.div>
               )}
@@ -403,7 +491,7 @@ export default function ChatView() {
           <div className="px-4 pb-2">
             <ChatInput
               onSend={handleSend}
-              disabled={!["coaching", "result", "ideas"].includes(phase) || isTyping || isLoading}
+              disabled={!["coaching", "followup", "result", "ideas"].includes(phase) || isTyping || isLoading}
               placeholder={
                 phase === "coaching" ? "자유롭게 이야기해주세요..." :
                 phase === "ideas" ? "예: 1번 변형해줘, 3번 확장해줘" :
@@ -432,7 +520,7 @@ export default function ChatView() {
                 <DeepenView
                   idea={finalIdea}
                   deepened={deepenedIdea}
-                  onBack={() => { setDeepenedIdea(null as never); setFinalIdea(null as never); }}
+                  onBack={() => { setDeepenedIdea(null); setFinalIdea(null); }}
                 />
               ) : contentIdeas ? (
                 contentIdeas.length === 0 ? (
