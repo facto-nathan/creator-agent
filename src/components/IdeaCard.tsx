@@ -9,6 +9,7 @@ interface ContentIdea {
   format: string;
   platform: string;
   tags: string[];
+  trend_match?: string;
 }
 
 interface IdeaCardProps {
@@ -50,6 +51,11 @@ export default function IdeaCard({
           <span className="text-[10px] font-medium text-tertiary-text">
             {idea.format}
           </span>
+          {idea.trend_match && (
+            <span className="px-2 py-0.5 bg-surface rounded-full text-[10px] font-medium text-secondary-text">
+              📈 트렌드
+            </span>
+          )}
           {isSelected && (
             <motion.span
               initial={{ scale: 0 }}
@@ -86,7 +92,7 @@ export default function IdeaCard({
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: "auto", opacity: 1 }}
           transition={{ duration: 0.25 }}
-          className="border-t border-border-subtle bg-[#F7F3ED] px-4 py-3"
+          className="border-t border-border-subtle bg-background px-4 py-3"
         >
           <div className="flex items-center gap-1.5 flex-wrap">
             {VARY_ACTIONS.map((action) => (
