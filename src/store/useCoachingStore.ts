@@ -31,6 +31,7 @@ export interface ContentIdea {
   format: string;
   platform: string;
   tags: string[];
+  trend_match?: string;
 }
 
 export interface DeepenedIdea {
