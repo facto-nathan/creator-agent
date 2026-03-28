@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 
 interface LandingProps {
@@ -97,14 +98,22 @@ export default function Landing({ onStart }: LandingProps) {
       </div>
 
       {/* Footer */}
-      <motion.p
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.2, duration: 0.4 }}
-        className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone text-center"
+        className="flex flex-col items-center gap-3"
       >
-        약 8분 소요
-      </motion.p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone">
+          약 8분 소요
+        </p>
+        <Link
+          href="/workspace"
+          className="text-[12px] text-tertiary-text underline hover:text-secondary-text transition-colors"
+        >
+          이미 계정이 있으신가요? 워크스페이스로 이동
+        </Link>
+      </motion.div>
     </div>
   );
 }
